@@ -103,12 +103,16 @@ function processData(data) {
         return value;
     };
 
-    var dataTypes = ['pressure', 'temperature', 'humidity', 'rback', 'rforward', 'rcoeff',
-                 'gback', 'gforward', 'gcoeff', 'bback', 'bforward', 'bcoeff'];
-    var series = {};
+    var environmentDataTypes = ['pressure', 'temperature', 'humidity']
+    var scatteringDataTypes = ['rback', 'rforward', 'rcoeff',
+                               'gback', 'gforward', 'gcoeff', 'bback', 'bforward', 'bcoeff'];
+    var series = { environment: {}, scattering: {} };
     var times = [];
-    $.each(dataTypes, function(i, dataType) {
-        series[dataType] = [];
+    $.each(environmentDataTypes, function(i, dataType) {
+        series.environment[dataType] = [];
+    });
+    $.each(scatteringDataTypes, function(i, dataType) {
+        series.scattering[dataType] = [];
     });
     $.each(data.split('\n'), function (i, line) {
         try {
@@ -130,12 +134,12 @@ function processData(data) {
         var back = sigBack * config.aBR + config.bBR - rayleighB(temperature, pressure, "r");
         var fwd = sigFwd * config.aFR + config.bFR - rayleighF(temperature, pressure, "r");
         var rcoeff = back + fwd;
-        series.pressure.push(pressure);
-        series.temperature.push(temperature);
-        series.humidity.push(humidity);
-        series.rback.push(back);
-        series.rforward.push(fwd);
-        series.rcoeff.push(rcoeff);
+        series.environment.pressure.push(pressure);
+        series.environment.temperature.push(temperature);
+        series.environment.humidity.push(humidity);
+        series.scattering.rback.push(back);
+        series.scattering.rforward.push(fwd);
+        series.scattering.rcoeff.push(rcoeff);
         times.push(Date.parse(TIME));
 
         sigBack = (BG - D) / (BG_R - BD_R);
@@ -143,9 +147,9 @@ function processData(data) {
         back = sigBack * config.aBG + config.bBG - rayleighB(temperature, pressure, "g");
         fwd = sigFwd * config.aFG + config.bFG - rayleighF(temperature, pressure, "g");
         gcoeff = back + fwd;
-        series.gback.push(back);
-        series.gforward.push(fwd);
-        series.gcoeff.push(gcoeff);
+        series.scattering.gback.push(back);
+        series.scattering.gforward.push(fwd);
+        series.scattering.gcoeff.push(gcoeff);
 
         sigBack = (BB - D) / (BB_R - BD_R);
         sigFwd = (FB - D) / (FB_R - FD_R);
@@ -161,25 +165,42 @@ function processData(data) {
         //                           bcoeff = max_scale
         //                                           }
         //            }
-        series.bback.push(back);
-        series.bforward.push(fwd);
-        series.bcoeff.push(bcoeff);
+        series.scattering.bback.push(back);
+        series.scattering.bforward.push(fwd);
+        series.scattering.bcoeff.push(bcoeff);
 
 
     });
-    return $.map(series, function (val, key) {
-        var seriesData = [];
+    var seriesData;
+    var scatteringSeries = $.map(series.scattering, function (val, key) {
+        seriesData = [];
         $.each(val, function(index, element) {
             seriesData.push([times[index], element]);
         });
-        return { name: key, data: seriesData, visible: false, lineWidth: 2, turboThreshold: 0, yAxis: key};
+        // hacky way to determine color
+        var color;
+        if (key[0] === 'b') {
+            color = 'blue';
+        } else if (key[0] === 'g') {
+            color = 'green';
+        } else {
+            color = 'red';
+        }
+        return { name: key, data: seriesData, visible: false, lineWidth: 2, turboThreshold: 0, color: color };
     });
+    var environmentSeries = $.map(series.environment, function (val, key) {
+        seriesData = [];
+        $.each(val, function(index, element) {
+            seriesData.push([times[index], element]);
+        });
+        return { name: key, data: seriesData, visible: false, lineWidth: 2, turboThreshold: 0, yAxis: key };
+    });
+    return { environment: environmentSeries, scattering: scatteringSeries };
 }
 
-function loadDataOnSuccess(data, status, jqXHR) {
-    /* called when backend returns with filedata */
-    this.series = processData(data);
-    var yAxis = $.map(this.series, function(dataSet) {
+
+function generateYAxis(series) {
+    var yAxis = $.map(series, function(dataSet) {
         return {
             id: dataSet.name,
             title: {
@@ -189,16 +210,59 @@ function loadDataOnSuccess(data, status, jqXHR) {
         };
     });
     yAxis[0].visible = true;
-    this.series[0].visible = true;
-    var chartConfig = {
+    return yAxis;
+}
+
+function plotScattering(scatteringSeries) {
+    scatteringSeries[0].visible = true;
+    var scatteringChartConfig = {
         chart: {
-            zoomType: 'x'
+            zoomType: 'xy',
+            borderWidth: 1,
+            borderColor: 'grey'
         },
         exporting: {
             enabled: true
         },
         title: {
-            text: 'Real Time Nephelometer'
+            text: 'Real Time Nephelometer (Scattering)'
+        },
+        xAxis: {
+            type: 'datetime',
+            title: {
+                text: 'Date'
+            }
+        },
+        legend: {
+            layout: 'vertical',
+            backgroundColor: '#FFFFFF',
+            floating: false,
+            align: 'right',
+            verticalAlign: 'top'
+        },
+        tooltip: {
+            shared: true,
+            crosshairs: true
+        },
+        series: scatteringSeries
+    };
+    Highcharts.chart('scattering-container', scatteringChartConfig);
+}
+
+function plotEnvironment(environmentSeries) {
+    var yAxis = generateYAxis(environmentSeries);
+    environmentSeries[0].visible = true;
+    var environmentChartConfig = {
+        chart: {
+            zoomType: 'xy',
+            borderWidth: 1,
+            borderColor: 'grey'
+        },
+        exporting: {
+            enabled: true
+        },
+        title: {
+            text: 'Real Time Nephelometer (Environment)'
         },
         xAxis: {
             type: 'datetime',
@@ -218,17 +282,25 @@ function loadDataOnSuccess(data, status, jqXHR) {
             shared: true,
             crosshairs: true
         },
-        series: this.series
+        series: environmentSeries
     };
-    Highcharts.chart('container', chartConfig);
-    $('.highcharts-line-series').click(function(e) {
-        var axis = $('#container').highcharts().yAxis.find(function(axis) {
+    Highcharts.chart('environment-container', environmentChartConfig);
+    $('#environment-container .highcharts-line-series').click(function(e) {
+        var axis = $('#environment-container').highcharts().yAxis.find(function(axis) {
             return axis.userOptions.id === $(e.currentTarget).find('text')[0].innerHTML;
         });
         axis.update({
             visible: !$(e.currentTarget).hasClass('highcharts-legend-item-hidden')
         });
     });
+}
+
+function loadDataOnSuccess(data, status, jqXHR) {
+    /* called when backend returns with filedata */
+    series = processData(data);
+
+    plotScattering(series.scattering);
+    plotEnvironment(series.environment);
     $('#loaddata-button').prop('disabled', false);
     $('#loaddata-button').html('Submit');
 }
