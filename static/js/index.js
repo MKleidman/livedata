@@ -172,16 +172,25 @@ function processData(data) {
         $.each(val, function(index, element) {
             seriesData.push([times[index], element]);
         });
-        return { name: key, data: seriesData, visible: false, lineWidth: 2, turboThreshold: 0 };
+        return { name: key, data: seriesData, visible: false, lineWidth: 2, turboThreshold: 0, yAxis: key};
     });
 }
 
 function loadDataOnSuccess(data, status, jqXHR) {
     /* called when backend returns with filedata */
-    var series = processData(data)
-    series[0].visible = true;  // set one series initially visible
-    Highcharts.chart('container', {
-        series: series,
+    this.series = processData(data);
+    var yAxis = $.map(this.series, function(dataSet) {
+        return {
+            id: dataSet.name,
+            title: {
+                text: dataSet.name
+            },
+            visible: false
+        };
+    });
+    yAxis[0].visible = true;
+    this.series[0].visible = true;
+    var chartConfig = {
         chart: {
             zoomType: 'x'
         },
@@ -197,6 +206,7 @@ function loadDataOnSuccess(data, status, jqXHR) {
                 text: 'Date'
             }
         },
+        yAxis: yAxis,
         legend: {
             layout: 'vertical',
             backgroundColor: '#FFFFFF',
@@ -207,7 +217,17 @@ function loadDataOnSuccess(data, status, jqXHR) {
         tooltip: {
             shared: true,
             crosshairs: true
-        }
+        },
+        series: this.series
+    };
+    Highcharts.chart('container', chartConfig);
+    $('.highcharts-line-series').click(function(e) {
+        var axis = $('#container').highcharts().yAxis.find(function(axis) {
+            return axis.userOptions.id === $(e.currentTarget).find('text')[0].innerHTML;
+        });
+        axis.update({
+            visible: !$(e.currentTarget).hasClass('highcharts-legend-item-hidden')
+        });
     });
     $('#loaddata-button').prop('disabled', false);
     $('#loaddata-button').html('Submit');
