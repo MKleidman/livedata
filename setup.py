@@ -4,6 +4,6 @@ setup(name='airphoton',
       description='Application for Airphoton Data',
       author='Matis Kleidman',
       author_email='matis.kleidman@gmail.com',
-      packages=find_packages('src/'),
+      packages=find_packages(),
       include_package_data=True
       )
