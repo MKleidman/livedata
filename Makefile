@@ -36,9 +36,9 @@ shell:
 	$(PYTHON) airphoton_project/manage.py shell_plus
 
 server:
-	$(PYTHON) airphoton_project/manage.py runserver 0:8000 --insecure
+	$(PYTHON) airphoton_project/manage.py runserver 0:8001 --insecure
 
 collectstatic:
-	$(PYTHON) airphoton_project/manage.py collectstatic
+	$(PYTHON) airphoton_project/manage.py collectstatic -l
 
-.PHONY: all build shell server sync
+.PHONY: all build shell server sync collectstatic
