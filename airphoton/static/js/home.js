@@ -1,3 +1,16 @@
+$(document).ready(function() {
+    $('#global-nav-tabs > li > a').click(function(e) {
+        e.preventDefault();
+        $('.tab-area').hide();
+        $('#global-nav-tabs > li').removeClass('active');
+        $(e.currentTarget).closest('li').addClass('active');
+        $('#' + $(e.currentTarget).data('area')).show();
+    });
+});
+
+var environmentChart;
+var scatteringChart;
+
 function loadConfig() {
     /* default config for now */
     var default_config = {
@@ -178,15 +191,8 @@ function processData(data) {
             seriesData.push([times[index], element]);
         });
         // hacky way to determine color
-        var color;
-        if (key[0] === 'b') {
-            color = 'blue';
-        } else if (key[0] === 'g') {
-            color = 'green';
-        } else {
-            color = 'red';
-        }
-        return { name: key, data: seriesData, visible: false, lineWidth: 2, turboThreshold: 0, color: color };
+        var colorMap = { 'b': 'blue', 'r': 'red', 'g': 'green' };
+        return { name: key, data: seriesData, visible: false, lineWidth: 2, turboThreshold: 0, color: colorMap[key[0]] };
     });
     var environmentSeries = $.map(series.environment, function (val, key) {
         seriesData = [];
@@ -222,7 +228,8 @@ function plotScattering(scatteringSeries) {
             borderColor: 'grey'
         },
         exporting: {
-            enabled: true
+            enabled: true,
+            fallbackToExportServer: false,
         },
         title: {
             text: 'Real Time Nephelometer (Scattering)'
@@ -244,9 +251,13 @@ function plotScattering(scatteringSeries) {
             shared: true,
             crosshairs: true
         },
+        exporting: {
+            enabled: true,
+            fallbackToExportServer: false,
+        },
         series: scatteringSeries
     };
-    Highcharts.chart('scattering-container', scatteringChartConfig);
+    scatteringChart = Highcharts.chart('scattering-container', scatteringChartConfig);
 }
 
 function plotEnvironment(environmentSeries) {
@@ -282,11 +293,14 @@ function plotEnvironment(environmentSeries) {
             shared: true,
             crosshairs: true
         },
+        exporting: {
+            enabled: true
+        },
         series: environmentSeries
     };
-    Highcharts.chart('environment-container', environmentChartConfig);
+    environmentChart = Highcharts.chart('environment-container', environmentChartConfig);
     $('#environment-container .highcharts-line-series').click(function(e) {
-        var axis = $('#environment-container').highcharts().yAxis.find(function(axis) {
+        var axis = environmentChart.yAxis.find(function(axis) {
             return axis.userOptions.id === $(e.currentTarget).find('text')[0].innerHTML;
         });
         axis.update({
@@ -315,14 +329,34 @@ function loadDataOnError(jqXHR, textStatus, errorThrown) {
     }
 }
 
+function getCookie(name) {
+    var cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        var cookies = document.cookie.split(';');
+        for (var i = 0; i < cookies.length; i++) {
+            var cookie = jQuery.trim(cookies[i]);
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
 function loadDataClicked(e) {
     e.preventDefault();
     $(this).html('Loading...');
     $(this).prop('disabled', true);
     $('#container').html('<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i>');
+    var csrftoken = getCookie('csrftoken');
     $.post({
         url: '/loaddata/',
         data: { filename: $('#filename-input').val() },
+        beforeSend: function(request) {
+            request.setRequestHeader('X-CSRFToken', csrftoken);
+        },
         success: loadDataOnSuccess,
         error: loadDataOnError
     });
@@ -331,3 +365,4 @@ function loadDataClicked(e) {
 $(document).ready(function(){
     $('#loaddata-button').click(loadDataClicked);
 });
+
