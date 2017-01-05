@@ -4,5 +4,7 @@ from airphoton import views
 urlpatterns = [
 	url(r'^ping/$', views.ping),
     url(r'^loaddata/$', views.loaddata),
+    url(r'^upload_data/$', views.upload_data),
+    url(r'^list_files/$', views.list_files),
     url(r'^$', views.home, name="home"),
 ]

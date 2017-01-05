@@ -2,3 +2,5 @@
 airphoton.egg-info/
 build/
 dist/
+airphoton/build/
+airphoton/dist/

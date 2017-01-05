@@ -2,7 +2,9 @@ setup.py
 airphoton/__init__.py
 airphoton/admin.py
 airphoton/apps.py
+airphoton/forms.py
 airphoton/models.py
+airphoton/settings.py
 airphoton/tests.py
 airphoton/urls.py
 airphoton/views.py
@@ -13,4 +15,3 @@ airphoton.egg-info/requires.txt
 airphoton.egg-info/top_level.txt
 airphoton/migrations/0001_initial.py
 airphoton/migrations/__init__.py
-migrations/__init__.py

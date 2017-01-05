@@ -1,13 +1,3 @@
-$(document).ready(function() {
-    $('#global-nav-tabs > li > a').click(function(e) {
-        e.preventDefault();
-        $('.tab-area').hide();
-        $('#global-nav-tabs > li').removeClass('active');
-        $(e.currentTarget).closest('li').addClass('active');
-        $('#' + $(e.currentTarget).data('area')).show();
-    });
-});
-
 var environmentChart;
 var scatteringChart;
 
@@ -350,19 +340,80 @@ function loadDataClicked(e) {
     $(this).html('Loading...');
     $(this).prop('disabled', true);
     $('#container').html('<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i>');
-    var csrftoken = getCookie('csrftoken');
-    $.post({
+    $.get({
         url: '/loaddata/',
-        data: { filename: $('#filename-input').val() },
-        beforeSend: function(request) {
-            request.setRequestHeader('X-CSRFToken', csrftoken);
-        },
+        data: { name: $('#filename-input').select2('data')[0].text, team: 1 },
         success: loadDataOnSuccess,
         error: loadDataOnError
     });
 }
 
-$(document).ready(function(){
+function onUploadDataButtonClick(e) {
+    e.preventDefault();
+    $('.modal-title').html('Upload Data File');
+    $('.modal-body').html(
+        '<form method="POST" enctype="multipart/form-data" id="upload-data-submit">' +
+        'Filename: <input type="text" name="name">' +
+        '<input type="file" name="datafile" id="upload-data-file-input" accept=".csv"></form>'
+    );
+    $('#modal-submit-button').html('Upload File');
+    $('#modal-submit-button').click(function(submitEvent) {
+
+        // remove alerts and set the spinner
+        $('#global-modal .alert').remove()
+        $('#modal-submit-button').html('<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i><span class="sr-only">Loading...</span>');
+        $('#modal-submit-button').prop('disabled', true);
+
+        var formData = new FormData($('#upload-data-submit')[0]);
+        var csrftoken = getCookie('csrftoken');
+        formData.append('csrfmiddlewaretoken', csrftoken);
+        formData.append('team', 1);  // temporary
+        submitEvent.preventDefault();
+        $.post({
+            url: 'upload_data/',
+            type: 'POST',
+            data: formData,
+            success: function(data, status, jqXHR) {
+                $('#global-modal').modal('hide');
+            },
+            error: function(jqXHR, textStatus, errorThrown) {
+                var oldHTML = $('.modal-body').html();
+                $('.modal-body').html('<div class="alert alert-warning">' + jqXHR.responseText + '</div>' + oldHTML);
+                $('#modal-submit-button').prop('disabled', false);
+                $('#modal-submit-button').html('Upload File');
+            },
+            contentType: false,
+            processData: false,
+            cache: false
+        });
+    });
+}
+
+$(document).ready(function() {
+    $('#global-nav-tabs > li > a').click(function(e) {
+        e.preventDefault();
+        $('.tab-area').hide();
+        $('#global-nav-tabs > li').removeClass('active');
+        $(e.currentTarget).closest('li').addClass('active');
+        $('#' + $(e.currentTarget).data('area')).show();
+    });
     $('#loaddata-button').click(loadDataClicked);
+    $('#upload_data-button').click(onUploadDataButtonClick);
+    $('#filename-input').select2({
+        ajax: {
+            url: '/list_files/',
+            dataType: 'json',
+            data: { team: 1 },
+            processResults: function (data, params) {
+              // parse the results into the format expected by Select2
+              var results = $.map(data, function(name, index) { return { id: index, text: name }; });
+              if (params.term) {
+                results = results.filter(function(result) { return ~result.text.indexOf(params.term); });
+              }
+              return { results: results };
+            },
+            minimumInputLength: 1
+        }
+    });
 });
 

@@ -1,16 +1,27 @@
 {% extends 'base.html' %}
 
 {% block content %}
+
+    <div class="col-md-12">
+        <ul class="nav nav-tabs" id="global-nav-tabs">
+            <li role="presentation" class="active">
+                <a href="#" id="graph-tab" data-area="graph-area">Graph Data</a>
+            </li>
+            <li>
+                <a href="#" id="calibration-tab" data-area="calibration-area">Calibration</a>
+            </li>
+        </ul>
+    </div>
     <div class="col-md-12 tab-area" id="graph-area">
         <form class="col-xs-4">
             <div class="form-group">
                 <label for="filename-input">Enter Filename:</label>
-                <select type=text class="form-control" id="filename-input"></select>
+                <select type=text class="form-control" id="filename-input">
+                    <option value="realtime.txt">realtime.txt</option>
+                </select>
             </div>
             <div class="form-group">
-                <button id="loaddata-button" class="btn btn-primary" type=submit>Submitt</button>
-                <button id="upload_data-button" class="btn btn-secondary" data-toggle="modal" data-target="#global-modal">Upload New File</button>
-                <div id="csrf-token">{% csrf_token %}</div>
+                <button id="loaddata-button" class="btn btn-primary" type=submit>Submit</button>
             </div>
         </form>
         <div id="scattering-container" class="col-md-12" style="text-align: center; padding: 5px;"></div>

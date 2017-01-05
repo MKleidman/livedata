@@ -1,4 +1,5 @@
-LOGIN_URL = '/login'
+import os.path
+LOGIN_URL = '/login/'
 LOGIN_REDIRECT_URL = '/'
 
 INSTALLED_APPS = (
@@ -12,7 +13,8 @@ INSTALLED_APPS = (
     'grappelli',
     'django.contrib.admin',
     'django_extensions',
-    'airphoton'
+    'airphoton',
+    'storages'
 )
 
 TEMPLATES = [
@@ -30,3 +32,10 @@ TEMPLATES = [
         },
     },
 ]
+
+DEFAULT_FILE_STORAGE = 'storages.backends.s3boto.S3BotoStorage'
+AWS_ACCESS_KEY_ID = ''
+AWS_SECRET_ACCESS_KEY = ''
+AWS_STORAGE_BUCKET_NAME = 'airphoton-data'
+
+STATIC_URL = 'http://localhost:8001/static/'
