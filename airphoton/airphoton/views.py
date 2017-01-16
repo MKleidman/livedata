@@ -51,3 +51,25 @@ def upload_data(request):
         return HttpResponse(status=201)
     else:
         return HttpResponse(status=400, content=str(form.errors))
+
+
+@require_http_methods(['POST'])
+@login_required()
+def upload_config(request):
+    data = {}
+    config = {}
+    for k, v in request.POST.iteritems():
+        if k == 'name':
+            data[k] = v
+        elif k == 'team':
+            pass
+        else:
+            config[k] = v
+    data['configuration'] = config
+    form = forms.ConfigurationForm(data)
+    if form.is_valid():
+        new_config = form.save()
+        new_config.team.add(request.POST['team'])
+        return HttpResponse(status=201)
+    else:
+        return HttpResponse(status=400, content=str(form.errors))

@@ -1,90 +1,83 @@
 var environmentChart;
 var scatteringChart;
+var globalConfig = {};
 
-function loadConfig() {
-    /* default config for now */
-    var default_config = {
-        "aP" : 1.0, // changed from 1.113 on 2015-06-19
-        "aT" : 1.0,
-        "aRH" : 1.0,
-        "aBR" : 1.0,
-        "aFR" : 1.0,
-        "aBG" : 1.0,
-        "aFG" : 1.0,
-        "aBB" : 1.0,
-        "aFB" : 1.0,
+var defaultConfig = {
+    "aP" : 1.0, // changed from 1.113 on 2015-06-19
+    "aT" : 1.0,
+    "aRH" : 1.0,
+    "aBR" : 1.0,
+    "aFR" : 1.0,
+    "aBG" : 1.0,
+    "aFG" : 1.0,
+    "aBB" : 1.0,
+    "aFB" : 1.0,
 
-        "bP" : 0.0,
-        "bT" : 0.0,
-        "bRH" : 0.0,
-        "bBR" : 0.0,
-        "bBG" : 0.0,
-        "bFR" : 0.0,
-        "bFG" : 0.0,
-        "bBB" : 0.0,
-        "bFB" : 0.0,
+    "bP" : 0.0,
+    "bT" : 0.0,
+    "bRH" : 0.0,
+    "bBR" : 0.0,
+    "bBG" : 0.0,
+    "bFR" : 0.0,
+    "bFG" : 0.0,
+    "bBB" : 0.0,
+    "bFB" : 0.0,
 
-        "ar_ratio": 1.0,
-        "ag_ratio": 1.0,
-        "ab_ratio": 1.0,
-        "n2r_ratio": 1.1525,
-        "n2g_ratio": 1.1525,
-        "n2b_ratio": 1.1525,
-        "co2r_ratio": 2.61,
-        "co2g_ratio": 2.61,
-        "co2b_ratio": 2.61,
-        "sf6r_ratio": 6.74,
-        "sf6g_ratio": 6.74,
-        "sf6b_ratio": 6.74,
-        "ar_scat": 0.00000647,
-        "ag_scat": 0.0000133,
-        "ab_scat": 0.00002459,
-        "n2r_scat": 0.0000067773,
-        "n2g_scat": 0.000013964,
-        "n2b_scat": 0.000025894,
+    "ar_ratio": 1.0,
+    "ag_ratio": 1.0,
+    "ab_ratio": 1.0,
+    "n2r_ratio": 1.1525,
+    "n2g_ratio": 1.1525,
+    "n2b_ratio": 1.1525,
+    "co2r_ratio": 2.61,
+    "co2g_ratio": 2.61,
+    "co2b_ratio": 2.61,
+    "sf6r_ratio": 6.74,
+    "sf6g_ratio": 6.74,
+    "sf6b_ratio": 6.74,
+    "ar_scat": 0.00000647,
+    "ag_scat": 0.0000133,
+    "ab_scat": 0.00002459,
+    "n2r_scat": 0.0000067773,
+    "n2g_scat": 0.000013964,
+    "n2b_scat": 0.000025894,
 
-        "co2r_scat": 0.00001674,
-        "co2g_scat": 0.00003449,
-        "co2b_scat": 0.00006396,
-        "sf6r_scat": 0.0000763,
-        "sf6g_scat": 0.0000763,
-        "sf6b_scat": 0.0000763,
-        "ar_btratio": 0.5,
-        "ag_btratio": 0.5,
-        "ab_btratio": 0.5,
-        "n2r_btratio": 0.5,
-        "n2g_btratio": 0.5,
-        "n2b_btratio": 0.5,
-        "co2r_btratio": 0.5,
-        "co2g_btratio": 0.5,
-        "co2b_btratio": 0.5,
-        "sf6r_btratio": 0.5,
-        "sf6g_btratio": 0.5,
-        "sf6b_btratio": 0.5
-    };
+    "co2r_scat": 0.00001674,
+    "co2g_scat": 0.00003449,
+    "co2b_scat": 0.00006396,
+    "sf6r_scat": 0.0000763,
+    "sf6g_scat": 0.0000763,
+    "sf6b_scat": 0.0000763,
+    "ar_btratio": 0.5,
+    "ag_btratio": 0.5,
+    "ab_btratio": 0.5,
+    "n2r_btratio": 0.5,
+    "n2g_btratio": 0.5,
+    "n2b_btratio": 0.5,
+    "co2r_btratio": 0.5,
+    "co2g_btratio": 0.5,
+    "co2b_btratio": 0.5,
+    "sf6r_btratio": 0.5,
+    "sf6g_btratio": 0.5,
+    "sf6b_btratio": 0.5
+};
 
-    var config = default_config;
-    return config;
-}
 
 function processData(data) {
-    var config = loadConfig();
+    var config = $.isEmptyObject(globalConfig) ? defaultConfig : globalConfig;
     var rayleighF = function (t, p, c) {
         var p0 = 101.3;
         var t0 = 293.0;
-        
 
         t += 273.0;
-        
         var value = (p / p0) * (t0 / t);
-        
+
         if (c == "r")
             value *= config.ar_scat * (1 - config.ar_btratio);
         else if (c == "g")
             value *= config.ag_scat * (1 - config.ag_btratio);
         else if (c == "b")
             value *= config.ab_scat * (1 - config.ab_btratio);
-        
         return value;
     };
     
@@ -93,16 +86,16 @@ function processData(data) {
         var t0 = 293.0;
 
         t += 273.0;
-        
+
         var value = (p / p0) * (t0 / t);
-        
+
         if (c == "r")
             value *= config.ar_scat * config.ar_btratio;
         else if (c == "g")
             value *= config.ag_scat * config.ag_btratio;
         else if (c == "b")
             value *= config.ab_scat * config.ab_btratio;
-        
+
         return value;
     };
 
@@ -348,6 +341,99 @@ function loadDataClicked(e) {
     });
 }
 
+function onSelectConfigButtonClick(e) {
+    e.preventDefault();
+}
+
+function onNewConfigButtonClick(e) {
+    e.preventDefault();
+    $('.modal-title').html('New Configuration');
+    var configInputs = [];
+    var config = $.isEmptyObject(globalConfig) ? defaultConfig : globalConfig;
+    $.each(config, function(k, v) {
+        configInputs.push('<label for="config-input-' + k + '">' + k + ': </label>' +
+                          '<input class="form-control config-input" id="config-input-' + k + '" ' +
+                          'type="text" name="' + k + '" value="' + v + '">');
+    });
+    $('.modal-body').append('<form method="POST" enctype="multipart/form-data" id="upload-config-submit"></form>');
+    $.each(config, function(k, v) {
+        $('#upload-config-submit').append('<div class="form-group" id="config-input-' + k + '"></div>');
+        $('#config-input-' + k).append('<label for="config-input-' + k + '">' + k + ': </label>');
+        $('#config-input-' + k).append('<input class="form-control config-input" ' +
+                                       'type="text" name="' + k + '" value="' + v + '">');
+    });
+    $('#modal-second-button').html('Save Configuration');
+    $('#modal-second-button').removeClass('hidden');
+    $('#modal-second-button').click(function(secondSubmitEvent) {
+        $('#modal-second-button').html('<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i><span class="sr-only">Loading...</span>');
+        $('#modal-second-button').prop('disabled', true);
+        $('#global-modal .alert').remove()
+        secondSubmitEvent.stopPropagation();
+        if (!$('#config-input-name').length) {
+            $('#upload-config-submit').append('<div class="form-group has-error" id="config-input-name"></div>');
+            $('#config-input-name').append('<label for="config-input-name">Enter Name for Config: </label>');
+            $('#config-input-name').append('<input class="form-control config-input" ' +
+                                           'type="text" name="name">');
+            $('#modal-second-button').prop('disabled', false);
+            $('#modal-second-button').html('Save Configuration');
+        } else if (!$('#config-input-name input').val()) {
+            $('.modal-body').prepend('<div class="alert alert-warning">Enter a Name for Your Config</div>');
+            $('#modal-second-button').prop('disabled', false);
+            $('#modal-second-button').html('Save Configuration');
+        } else {
+            var formData = new FormData($('#upload-config-submit')[0]);
+            var csrftoken = getCookie('csrftoken');
+            formData.append('csrfmiddlewaretoken', csrftoken);
+            formData.append('team', 1);  // temporary
+            $.post({
+                url: 'upload_config/',
+                type: 'POST',
+                data: formData,
+                success: function(data, status, jqXHR) {
+                    $('#global-modal').modal('hide');
+                },
+                error: function(jqXHR, textStatus, errorThrown) {
+                    var oldHTML = $('.modal-body').html();
+                    $('.modal-body').html('<div class="alert alert-warning">' + jqXHR.responseText + '</div>' + oldHTML);
+                    $('#modal-second-button').prop('disabled', false);
+                    $('#modal-second-button').html('Save Configuration');
+                },
+                contentType: false,
+                processData: false,
+                cache: false
+            });
+        }
+    });
+    $('#modal-submit-button').html('Update Configuration');
+    $('#modal-submit-button').prop('disabled', false);
+    $('#modal-submit-button').click(function(modalSubmitEvent) {
+        modalSubmitEvent.preventDefault();
+        $('.has-error').removeClass('has-error');
+        $('#global-modal .alert').remove()
+        $('#modal-submit-button').html('<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i><span class="sr-only">Loading...</span>');
+        $('#modal-submit-button').prop('disabled', true);
+        var errors = false;
+        $('.config-input').each(function(i, input) {
+            var val = $(input).val()
+            globalConfig[input.name] = parseFloat(val) || val;
+            if (isNaN(parseFloat(val))) {
+                $(input).parent().addClass('has-error');
+                errors = true;
+            }
+        });
+
+        if (errors) {
+            $('.modal-body').prepend('<div class="alert alert-warning">Input Errors. Please Fix and Resubmit</div>');
+            $('#modal-submit-button').prop('disabled', false);
+            $('#modal-submit-button').html('Update Configuration');
+        } else {
+            $('.modal-body').empty();
+            $('#global-modal').modal('hide');
+        }
+    });
+
+}
+
 function onUploadDataButtonClick(e) {
     e.preventDefault();
     $('.modal-title').html('Upload Data File');
@@ -399,6 +485,8 @@ $(document).ready(function() {
     });
     $('#loaddata-button').click(loadDataClicked);
     $('#upload_data-button').click(onUploadDataButtonClick);
+    $('#new_config-button').click(onNewConfigButtonClick);
+    $('#select_config-button').click(onSelectConfigButtonClick);
     $('#filename-input').select2({
         ajax: {
             url: '/list_files/',
@@ -406,7 +494,7 @@ $(document).ready(function() {
             data: { team: 1 },
             processResults: function (data, params) {
               // parse the results into the format expected by Select2
-              var results = $.map(data, function(name, index) { return { id: index, text: name }; });
+              var results = $.map(data, function(name, index) { return { id: index + 1, text: name }; });
               if (params.term) {
                 results = results.filter(function(result) { return ~result.text.indexOf(params.term); });
               }

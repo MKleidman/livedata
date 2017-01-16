@@ -9,8 +9,14 @@ class LoginForm(AuthenticationForm):
 	password = forms.CharField(label="Password", max_length=30, 
 							   widget=forms.PasswordInput(attrs={'class': 'form-control', 'name': 'password'}))
 
+
 class DataSetForm(forms.ModelForm):
     class Meta:
         model = models.DataSet
         exclude = ['created_date', 'updated_date']
 
+
+class ConfigurationForm(forms.ModelForm):
+    class Meta:
+        model = models.Configuration
+        exclude = ['created_date', 'updated_date']
