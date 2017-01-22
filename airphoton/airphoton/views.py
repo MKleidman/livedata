@@ -41,6 +41,14 @@ def list_files(request):
     datasets = models.DataSet.objects.filter(team=team_id).values_list('name', flat=True)
     return HttpResponse(status=200, content=json.dumps(list(datasets)), content_type="application/json")
 
+@require_http_methods(['GET'])
+@login_required()
+def configuration(request):
+    team_id = request.GET.get('team')
+    if not team_id:
+        return HttpResponse(status=400, content="Must specify a team")
+    configs = models.Configuration.objects.filter(team__id=team_id).values('id', 'name', 'configuration')
+    return HttpResponse(status=200, content=json.dumps(list(configs)), content_type="application/json")
 
 @require_http_methods(['POST'])
 @login_required()

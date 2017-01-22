@@ -1,6 +1,7 @@
 var environmentChart;
 var scatteringChart;
 var globalConfig = {};
+var globalData;
 
 var defaultConfig = {
     "aP" : 1.0, // changed from 1.113 on 2015-06-19
@@ -202,7 +203,7 @@ function generateYAxis(series) {
     return yAxis;
 }
 
-function plotScattering(scatteringSeries) {
+function plotScattering(scatteringSeries, newData) {
     scatteringSeries[0].visible = true;
     var scatteringChartConfig = {
         chart: {
@@ -240,10 +241,13 @@ function plotScattering(scatteringSeries) {
         },
         series: scatteringSeries
     };
+    if ($('#scattering-container').data('highchartsChart')) {
+        Highcharts.charts[$('#scattering-container').data('highchartsChart')].destroy();
+    }
     scatteringChart = Highcharts.chart('scattering-container', scatteringChartConfig);
 }
 
-function plotEnvironment(environmentSeries) {
+function plotEnvironment(environmentSeries, newData) {
     var yAxis = generateYAxis(environmentSeries);
     environmentSeries[0].visible = true;
     var environmentChartConfig = {
@@ -281,6 +285,7 @@ function plotEnvironment(environmentSeries) {
         },
         series: environmentSeries
     };
+    $('#environment-container').empty();
     environmentChart = Highcharts.chart('environment-container', environmentChartConfig);
     $('#environment-container .highcharts-line-series').click(function(e) {
         var axis = environmentChart.yAxis.find(function(axis) {
@@ -294,21 +299,28 @@ function plotEnvironment(environmentSeries) {
 
 function loadDataOnSuccess(data, status, jqXHR) {
     /* called when backend returns with filedata */
-    series = processData(data);
-
-    plotScattering(series.scattering);
-    plotEnvironment(series.environment);
+    globalData = data;
+    refreshPlots(globalData, true);
     $('#loaddata-button').prop('disabled', false);
     $('#loaddata-button').html('Submit');
+}
+
+function refreshPlots(data, newData) {
+    var series = processData(data);
+    plotScattering(series.scattering, newData);
+    plotEnvironment(series.environment, newData);
 }
 
 function loadDataOnError(jqXHR, textStatus, errorThrown) {
     $('#loaddata-button').prop('disabled', false);
     $('#loaddata-button').html('Submit');
+    $('.graph-container').empty();
+    $('#scattering-container').append('<div class="alert bg-danger"></div>');
+    $('#scattering-container .alert').append('<button type="button" class="close" data-dismiss="alert">&times;</button>');
     if (jqXHR.status === 404) {
-        $('#container').html('<h2>Could not find file with name ' + $('#filename-input').val() + '</h2>');
+        $('#scattering-container .alert').append('<h2>Could not find file with name ' + $('#filename-input').val() + '</h2>');
     } else {
-        $('#container').html('<h2>Error retrieving file: ' + errorThrown + '</h2>');
+        $('#scattering-container .alert').append('<h2>Error retrieving file: ' + errorThrown + '</h2>');
     }
 }
 
@@ -328,11 +340,16 @@ function getCookie(name) {
     return cookieValue;
 }
 
+function startSpinner(element, loadingMessage, alertContainer, spinnerContainer) {
+    element.html(loadingMessage);
+    element.prop('disabled', true);
+    $(alertContainer + ' .alert').remove();
+    $(spinnerContainer).html('<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i>');
+}
+
 function loadDataClicked(e) {
     e.preventDefault();
-    $(this).html('Loading...');
-    $(this).prop('disabled', true);
-    $('#container').html('<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i>');
+    startSpinner($(this), 'Loading...', '#scattering-container', '#container')
     $.get({
         url: '/loaddata/',
         data: { name: $('#filename-input').select2('data')[0].text, team: 1 },
@@ -342,7 +359,38 @@ function loadDataClicked(e) {
 }
 
 function onSelectConfigButtonClick(e) {
-    e.preventDefault();
+    $('.modal-title').html('Select Configuration');
+    $('.modal-body').append('<form id="select-config-form"></form>');
+    $('#select-config-form').append('<select class="form-control col-md-12" id="config-select-input" style="width:100%"></select>');
+    $('#config-select-input').select2({
+        ajax: {
+            url: '/configuration/',
+            dataType: 'json',
+            data: { team: 1 },
+            processResults: function (data, params) {
+                // parse the results into the format expected by Select2
+                var results = $.map(data, function(datum, index) {
+                    return { id: index + 1, text: datum.name, config: datum.configuration };
+                });
+                if (params.term) {
+                    results = results.filter(function(result) { return ~result.text.indexOf(params.term); });
+                }
+                return { results: results };
+            },
+            minimumInputLength: 1
+        }
+    });
+    $('#modal-submit-button').html('Select Configuration');
+    $('#modal-submit-button').click(function(submitEvent) {
+        globalConfig = $('#config-select-input').select2('data')[0].config;
+        $('#config-name').html($('#config-select-input').select2('data')[0].text);
+        $('#config-select-input').select2('data')[0].config;
+        destroyModal();
+        if (globalData) {
+            refreshPlots(globalData);
+        }
+    });
+
 }
 
 function onNewConfigButtonClick(e) {
@@ -365,9 +413,7 @@ function onNewConfigButtonClick(e) {
     $('#modal-second-button').html('Save Configuration');
     $('#modal-second-button').removeClass('hidden');
     $('#modal-second-button').click(function(secondSubmitEvent) {
-        $('#modal-second-button').html('<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i><span class="sr-only">Loading...</span>');
-        $('#modal-second-button').prop('disabled', true);
-        $('#global-modal .alert').remove()
+        startSpinner($('#modal-second-button'), 'Loading...', '#global-modal', '#modal-second-button');
         secondSubmitEvent.stopPropagation();
         if (!$('#config-input-name').length) {
             $('#upload-config-submit').append('<div class="form-group has-error" id="config-input-name"></div>');
@@ -390,7 +436,7 @@ function onNewConfigButtonClick(e) {
                 type: 'POST',
                 data: formData,
                 success: function(data, status, jqXHR) {
-                    $('#global-modal').modal('hide');
+                    destroyModal();
                 },
                 error: function(jqXHR, textStatus, errorThrown) {
                     var oldHTML = $('.modal-body').html();
@@ -409,16 +455,16 @@ function onNewConfigButtonClick(e) {
     $('#modal-submit-button').click(function(modalSubmitEvent) {
         modalSubmitEvent.preventDefault();
         $('.has-error').removeClass('has-error');
-        $('#global-modal .alert').remove()
-        $('#modal-submit-button').html('<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i><span class="sr-only">Loading...</span>');
-        $('#modal-submit-button').prop('disabled', true);
+        startSpinner($('#modal-submit-button'), 'Loading...', '#global-modal', '#modal-submit-button');
         var errors = false;
         $('.config-input').each(function(i, input) {
             var val = $(input).val()
-            globalConfig[input.name] = parseFloat(val) || val;
             if (isNaN(parseFloat(val))) {
+                globalConfig[input.name] = val;
                 $(input).parent().addClass('has-error');
                 errors = true;
+            } else {
+                globalConfig[input.name] = parseFloat(val);
             }
         });
 
@@ -427,11 +473,20 @@ function onNewConfigButtonClick(e) {
             $('#modal-submit-button').prop('disabled', false);
             $('#modal-submit-button').html('Update Configuration');
         } else {
-            $('.modal-body').empty();
-            $('#global-modal').modal('hide');
+            destroyModal();
+            if (globalData) {
+                refreshPlots(globalData);
+            }
+            $('#config-name').html('Custom');
         }
     });
 
+}
+
+function destroyModal() {
+    $('.modal-body').empty();
+    $('#global-modal').modal('hide');
+    $('#global-modal').data('modal', null);
 }
 
 function onUploadDataButtonClick(e) {
@@ -444,12 +499,7 @@ function onUploadDataButtonClick(e) {
     );
     $('#modal-submit-button').html('Upload File');
     $('#modal-submit-button').click(function(submitEvent) {
-
-        // remove alerts and set the spinner
-        $('#global-modal .alert').remove()
-        $('#modal-submit-button').html('<i class="fa fa-spinner fa-spin fa-3x fa-fw"></i><span class="sr-only">Loading...</span>');
-        $('#modal-submit-button').prop('disabled', true);
-
+        startSpinner($('#modal-submit-button'), 'Loading...', '#global-modal', '#modal-submit-button');
         var formData = new FormData($('#upload-data-submit')[0]);
         var csrftoken = getCookie('csrftoken');
         formData.append('csrfmiddlewaretoken', csrftoken);
@@ -460,7 +510,7 @@ function onUploadDataButtonClick(e) {
             type: 'POST',
             data: formData,
             success: function(data, status, jqXHR) {
-                $('#global-modal').modal('hide');
+                destroyModal();
             },
             error: function(jqXHR, textStatus, errorThrown) {
                 var oldHTML = $('.modal-body').html();
@@ -503,5 +553,9 @@ $(document).ready(function() {
             minimumInputLength: 1
         }
     });
+    $('#filename-input').on('select2:select', function(e) {
+        $('#loaddata-button').prop('disabled', false);
+    });
+    $('#global-modal').on('hidden.bs.modal', destroyModal);
 });
 
